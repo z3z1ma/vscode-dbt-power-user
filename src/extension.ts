@@ -5,11 +5,11 @@ import { AutocompletionProviderFactory } from "./autocompletion_provider/autocom
 import { TreeviewProviderFactory } from "./treeview_provider/treeviewProviderFactory";
 import navigateToSelectedNode from "./commands/navigateToSelectedNode";
 import { runModelOnNodeTreeItem, runModelOnActiveWindow, RunModelType } from "./commands/runModel";
+import { ShowCompiledModel } from "./commands/showCompiledModel";
 
 export const DBT_MODE = { language: "jinja-sql", scheme: "file" };
 
 export function activate(context: vscode.ExtensionContext) {
-
   context.subscriptions.push(
     vscode.languages.registerDefinitionProvider(
       DBT_MODE,
@@ -45,6 +45,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('run.dbt.childrenModels', runModelOnNodeTreeItem(RunModelType.CHILDREN)),
     vscode.commands.registerCommand('run.dbt.parentModels', runModelOnNodeTreeItem(RunModelType.PARENTS)),
     vscode.commands.registerCommand('treeview.selectNode', navigateToSelectedNode),
+    vscode.commands.registerCommand('show.compiledModel', new ShowCompiledModel(context).show)
   );
 
   DBTManifestInstance.tryRefresh();

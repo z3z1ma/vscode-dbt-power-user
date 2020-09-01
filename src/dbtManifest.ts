@@ -70,6 +70,7 @@ export interface OnDBTManifestCacheChanged {
 
 export class DBTManifestCacheChangedEvent {
   projectName: string;
+  targetPath: string;
   nodeMetaMap: NodeMetaMap;
   macroMetaMap: MacroMetaMap;
   sourceMetaMap: SourceMetaMap;
@@ -77,12 +78,14 @@ export class DBTManifestCacheChangedEvent {
 
   constructor(
     projectName: string,
+    targetPath: string,
     nodeMetaMap: NodeMetaMap,
     macroMetaMap: MacroMetaMap,
     sourceMetaMap: SourceMetaMap,
     parentModelMap: GraphMetaMap,
   ) {
     this.projectName = projectName;
+    this.targetPath = targetPath;
     this.nodeMetaMap = nodeMetaMap;
     this.macroMetaMap = macroMetaMap;
     this.sourceMetaMap = sourceMetaMap;
@@ -154,7 +157,7 @@ class DBTManifest {
     const sourceMetaMap = await this.createSourceMetaMap(sourcesPath);
     const graphMetaMap = this.createGraphMetaMap(parent_map, child_map, modelMetaMap, sourceMetaMap);
 
-    const event = new DBTManifestCacheChangedEvent(projectName, modelMetaMap, macroMetaMap, sourceMetaMap, graphMetaMap);
+    const event = new DBTManifestCacheChangedEvent(projectName, targetPath, modelMetaMap, macroMetaMap, sourceMetaMap, graphMetaMap);
 
     this.onDBTManifestCacheChangedHandlers.forEach((handler) => handler(event));
   }
