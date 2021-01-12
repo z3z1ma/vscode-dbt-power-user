@@ -11,16 +11,17 @@ import { DBTClient } from "../dbt_client/dbtClient";
 import { DBTWorkspaceFolder } from "./dbtWorkspaceFolder";
 import { DBTCommand } from "../dbt_client/dbtCommandFactory";
 import { ManifestCacheChangedEvent } from "./event/manifestCacheChangedEvent";
+import { container, singleton } from "tsyringe";
 
+@singleton()
 export class DbtProjectContainer implements Disposable {
-  private dbtClient: DBTClient = new DBTClient();
   public onDBTInstallationFound = this.dbtClient.onDBTInstallationFound;
   private dbtWorkspaceFolders: DBTWorkspaceFolder[] = [];
   private _onManifestChanged = new EventEmitter<ManifestCacheChangedEvent>();
   public readonly onManifestChanged = this._onManifestChanged.event;
   private disposables: Disposable[] = [this._onManifestChanged];
 
-  constructor() {
+  constructor(private dbtClient: DBTClient) {
     this.disposables.push(
       workspace.onDidChangeWorkspaceFolders(async (event) => {
         const { added, removed } = event;
@@ -124,4 +125,4 @@ export class DbtProjectContainer implements Disposable {
   }
 }
 
-export const dbtProjectContainer = new DbtProjectContainer();
+export const dbtProjectContainer = container.resolve(DbtProjectContainer);

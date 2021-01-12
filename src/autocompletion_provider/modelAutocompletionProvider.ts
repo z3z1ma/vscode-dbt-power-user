@@ -14,8 +14,10 @@ import {
 import { isEnclosedWithinCodeBlock } from "../utils";
 import { dbtProjectContainer } from "../manifest/dbtProjectContainer";
 import { ManifestCacheChangedEvent } from "../manifest/event/manifestCacheChangedEvent";
+import { singleton } from "tsyringe";
 
-export class ModelAutocompletionProvider // TODO autocomplete doesn't work when mistype, delete and retype
+@singleton() // TODO autocomplete doesn't work when mistype, delete and retype
+export class ModelAutocompletionProvider
   implements CompletionItemProvider, Disposable {
   private static readonly ENDS_WITH_REF = /ref\(['|"]$/;
   private modelAutocompleteMap: Map<string, CompletionItem[]> = new Map();

@@ -168,6 +168,7 @@
   "dependencies": {
     "dayjs": "^1.8.34",
     "js-yaml": "^3.14.0",
+    "reflect-metadata": "^0.1.13",
     "tsyringe": "^4.4.0"
   }
 }
