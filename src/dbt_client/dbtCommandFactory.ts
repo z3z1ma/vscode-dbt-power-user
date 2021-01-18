@@ -1,5 +1,6 @@
 import { Uri } from "vscode";
 import { provideSingleton } from "../utils";
+import { createRunSelectQuery } from "./pythonLiteralFactory";
 
 export interface RunModelParams {
   plusOperatorLeft: string;
@@ -77,6 +78,19 @@ export class DBTCommandFactory {
       statusMessage: "Updating dbt...",
       processExecutionParams: {
         args: ["-m", "pip", "install", "dbt", "--upgrade"],
+      },
+      focus: true,
+    };
+  }
+
+  createRunSelectQueryDBTCommand(tableName: string, projectRoot: Uri) {
+    const test = createRunSelectQuery(tableName, projectRoot.fsPath);
+    return {
+      commandAsString: `select * from ${tableName}`,
+      statusMessage: "Running select query...",
+      processExecutionParams: {
+        cwd: projectRoot.fsPath,
+        args: ["-c", createRunSelectQuery(tableName, projectRoot.fsPath)],
       },
       focus: true,
     };

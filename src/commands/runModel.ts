@@ -13,10 +13,19 @@ export enum RunModelType {
 export class RunModel {
   constructor(private dbtProjectContainer: DbtProjectContainer) {}
 
+  runSelectQueryOnActiveWindow() {
+    const fileName = this.getFileName();
+    const currentFilePath = window.activeTextEditor?.document.uri;
+    if (fileName !== undefined && currentFilePath !== undefined) {
+      this.dbtProjectContainer
+        .findDBTProject(currentFilePath)
+        ?.runSelectQuery(fileName);
+    }
+  }
+
   runModelOnActiveWindow(type?: RunModelType) {
-    const fullPath = window.activeTextEditor?.document.fileName;
-    if (fullPath !== undefined) {
-      const fileName = path.basename(fullPath, ".sql");
+    const fileName = this.getFileName();
+    if (fileName !== undefined) {
       this.runDBTModel(fileName, type);
     }
   }
@@ -42,5 +51,13 @@ export class RunModel {
     this.dbtProjectContainer
       .findDBTProject(currentFilePath)
       ?.runModel({ plusOperatorLeft, modelName, plusOperatorRight });
+  }
+
+  private getFileName(): string | undefined {
+    const fullPath = window.activeTextEditor?.document.fileName;
+    if (fullPath !== undefined) {
+      return path.basename(fullPath, ".sql");
+    }
+    return;
   }
 }

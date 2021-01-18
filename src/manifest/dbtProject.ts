@@ -116,6 +116,14 @@ export class DBTProject implements Disposable {
     this.dbtProjectContainer.listModels(this.projectRoot);
   }
 
+  runSelectQuery(fileName: string) {
+    const runSelectQueryCommand = this.dbtCommandFactory.createRunSelectQueryDBTCommand(
+      fileName,
+      this.projectRoot
+    );
+    this.dbtProjectContainer.addCommandToQueue(runSelectQueryCommand);
+  }
+
   runModel(runModelParams: RunModelParams) {
     const runModelCommand = this.dbtCommandFactory.createRunModelCommand(
       this.projectRoot,

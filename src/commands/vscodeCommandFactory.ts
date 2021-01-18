@@ -25,6 +25,10 @@ export class VSCodeCommandFactory {
         this.runModel.runModelOnNodeTreeItem(RunModelType.PARENTS)()
       ),
       vscode.commands.registerCommand(
+        "dbtPowerUser.runSelectQueryOnModel",
+        () => this.runModel.runSelectQueryOnActiveWindow()
+      ),
+      vscode.commands.registerCommand(
         "dbtPowerUser.navigateToFile",
         navigateToFile
       ),
