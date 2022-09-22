@@ -12,12 +12,12 @@ import { DBTClient } from "../dbt_client";
 import { DBTWorkspaceFolder } from "./dbtWorkspaceFolder";
 import { DBTCommand } from "../dbt_client/dbtCommandFactory";
 import { ManifestCacheChangedEvent } from "./event/manifestCacheChangedEvent";
-import { provideSingleton } from "../utils";
+import { provideSingleton, debounce } from "../utils";
 import { inject } from "inversify";
-import * as path from "path";
+import { basename } from "path";
 import { RunModelType } from "../domain";
-import { QueryResultPanel } from "../webview_provider";
-
+import { QueryResultPanel } from "../webview";
+import { SqlPreviewContentProvider } from "../content_provider/sqlPreviewContentProvider";
 
 @provideSingleton(DBTProjectContainer)
 export class DBTProjectContainer implements Disposable {
@@ -27,7 +27,6 @@ export class DBTProjectContainer implements Disposable {
   public readonly onManifestChanged = this._onManifestChanged.event;
   private disposables: Disposable[] = [this._onManifestChanged];
   private extensionUri: Uri = Uri.file("");
-  private queryResultViewer: QueryResultPanel | undefined = undefined;
 
   constructor(
     private dbtClient: DBTClient,
@@ -37,19 +36,49 @@ export class DBTProjectContainer implements Disposable {
       _onManifestChanged: EventEmitter<ManifestCacheChangedEvent>
     ) => DBTWorkspaceFolder
   ) {
+    // Workspace Folder Registrar
+    const fireUpdate = debounce(() => SqlPreviewContentProvider.instance?.onDidChangeEmitter.fire(SqlPreviewContentProvider.URI), 500);
     this.disposables.push(
       workspace.onDidChangeWorkspaceFolders(async (event) => {
         const { added, removed } = event;
-
         await Promise.all(
           added.map(
             async (folder) => await this.registerWorkspaceFolder(folder)
           )
         );
-
         removed.forEach((removedWorkspaceFolder) =>
           this.unregisterWorkspaceFolder(removedWorkspaceFolder)
         );
+      })
+    );
+
+    // Query View Sync
+    this.disposables.push(
+      workspace.onDidChangeTextDocument(async (event) => {
+        if (event.document.uri.path === SqlPreviewContentProvider.URI.path) {
+          return;
+        }
+        if (event.document.languageId === "jinja-sql") {
+          globalThis.currentSql = event.document.getText();
+          if (window.visibleTextEditors.some(
+            (editor) => editor.document.uri.path === SqlPreviewContentProvider.URI.path)) {
+            fireUpdate();
+          }
+        }
+      })
+    );
+    this.disposables.push(
+      window.onDidChangeActiveTextEditor(async (event) => {
+        if (event?.document.uri.path === SqlPreviewContentProvider.URI.path) {
+          return;
+        }
+        if (event?.document.languageId === "jinja-sql") {
+          globalThis.currentSql = event.document.getText();
+          if (window.visibleTextEditors.some(
+            (editor) => editor.document.uri.path === SqlPreviewContentProvider.URI.path)) {
+            fireUpdate();
+          }
+        }
       })
     );
   }
@@ -69,11 +98,6 @@ export class DBTProjectContainer implements Disposable {
     this.extensionUri = context.extensionUri;
   }
 
-  resolveQueryPanel(title: string) {
-    QueryResultPanel.createOrShow(this.extensionUri, title);
-    this.queryResultViewer = QueryResultPanel.currentPanel;
-  }
-
   // TODO: bypasses events and could be inconsistent
   getPackageName = (uri: Uri): string | undefined => {
     return this.findDBTProject(uri)?.findPackageName(uri);
@@ -88,30 +112,33 @@ export class DBTProjectContainer implements Disposable {
     await this.dbtClient.detectDBT();
   }
 
-  previewSQL<T>(sql: string, title: string): void {
-    const osmosisHost = workspace
-      .getConfiguration("dbt")
-      .get<string>("osmosisHost", "localhost");
-    const osmosisPort = workspace
-      .getConfiguration("dbt")
-      .get<number>("osmosisPort", 8581);
-    const limit = workspace
-      .getConfiguration("dbt")
-      .get<number>("queryLimit", 500);
-    this.resolveQueryPanel(title);
-    this.queryResultViewer?.doQuery(sql, title, osmosisHost, osmosisPort, limit);
+  executeSQL(query: string, title: string): void {
+    QueryResultPanel.createOrShow(this.extensionUri, title);
+    QueryResultPanel.currentPanel?.executeQuery(query);
   }
 
-  listModels(projectUri: Uri) {
-    this.dbtClient.listModels(projectUri);
+  async rebuildManifest() {
+    await this.dbtClient.rebuildManifest();
   }
 
   runModel(modelPath: Uri, type?: RunModelType) {
     this.findDBTProject(modelPath)?.runModel(this.createModelParams(modelPath, type));
   }
 
+  runTest(modelPath: Uri, testName: string) {
+    this.findDBTProject(modelPath)?.runTest(testName);
+  }
+
+  runModelTest(modelPath: Uri, modelName: string) {
+    this.findDBTProject(modelPath)?.runModelTest(modelName);
+  }
+
   compileModel(modelPath: Uri, type?: RunModelType) {
     this.findDBTProject(modelPath)?.compileModel(this.createModelParams(modelPath, type));
+  }
+
+  compileQuery(modelPath: Uri, query: string) {
+    this.findDBTProject(modelPath)?.compileQuery(query);
   }
 
   showRunSQL(modelPath: Uri) {
@@ -138,10 +165,6 @@ export class DBTProjectContainer implements Disposable {
     this.dbtClient.addCommandToQueue(command);
   }
 
-  async executeSQL(projectRoot: Uri, sql: string): Promise<any> {
-    return this.dbtClient.executeSQL(projectRoot, sql);
-  }
-
   dispose() {
     this.dbtWorkspaceFolders.forEach((workspaceFolder) =>
       workspaceFolder.dispose()
@@ -150,7 +173,7 @@ export class DBTProjectContainer implements Disposable {
   }
 
   private createModelParams(modelPath: Uri, type?: RunModelType) {
-    const modelName = path.basename(modelPath.fsPath, ".sql");
+    const modelName = basename(modelPath.fsPath, ".sql");
     const plusOperatorLeft = type === RunModelType.PARENTS ? "+" : "";
     const plusOperatorRight = type === RunModelType.CHILDREN ? "+" : "";
     return { plusOperatorLeft, modelName, plusOperatorRight };
