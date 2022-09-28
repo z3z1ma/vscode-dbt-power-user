@@ -2,7 +2,7 @@ import path = require("path");
 import { Uri, window } from "vscode";
 import { RunModelType } from "../domain";
 import { DBTProjectContainer } from "../manifest/dbtProjectContainer";
-import { NodeTreeItem } from "../treeview_provider/ModelTreeviewProvider";
+import { NodeTreeItem } from "../treeview_provider/modelTreeviewProvider";
 import { provideSingleton } from "../utils";
 
 @provideSingleton(RunModel)

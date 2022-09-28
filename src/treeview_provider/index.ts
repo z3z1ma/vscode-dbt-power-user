@@ -1,6 +1,6 @@
 import { Disposable, window } from "vscode";
 import { provideSingleton } from "../utils";
-import { ChildrenModelTreeview, ParentModelTreeview, ModelTestTreeview } from "./ModelTreeviewProvider";
+import { ChildrenModelTreeview, ParentModelTreeview, ModelTestTreeview } from "./modelTreeviewProvider";
 
 @provideSingleton(TreeviewProviders)
 export class TreeviewProviders implements Disposable {
