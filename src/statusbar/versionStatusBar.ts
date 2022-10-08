@@ -63,9 +63,15 @@ export class VersionStatusBar implements Disposable {
         }
         return;
       }
-      this.showTextInStatusBar(
-        `$(check) dbt`
-      );
+      if (event.dbtInstallationFound.installedVersion !== undefined) {
+          this.showTextInStatusBar(
+            `$(check) dbt ${event.dbtInstallationFound.installedVersion}`
+          );
+        } else {
+          this.showTextInStatusBar(
+            `$(check) dbt`
+          );
+        }
     }
   }
 

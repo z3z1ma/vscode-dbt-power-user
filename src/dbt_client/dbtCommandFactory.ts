@@ -72,11 +72,7 @@ export class DBTCommandFactory {
     };
   }
 
-  createRunQueryCommand(sql: string, projectRoot: Uri, profilesDir: Uri, target: string): DBTCommand {
-    const limit = workspace
-      .getConfiguration("dbt.queryPreview")
-      .get<number>("queryLimit", 200);
-
+  createRunQueryCommand(sql: string, projectRoot: Uri, profilesDir: Uri, target: string, limit: number): DBTCommand {
     const queryTemplate = workspace
       .getConfiguration("dbt.queryPreview")
       .get<string>("queryTemplate", "select * from ({query}) as osmosis_query limit {limit}");

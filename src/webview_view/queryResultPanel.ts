@@ -226,8 +226,9 @@ export class QueryResultPanel implements WebviewViewProvider {
     public async executeQuery(query: string, projectRootUri: Uri, profilesDir: Uri, target: string, title?: string) {
         // if (title) { this._panel!.title = title; }
         commands.executeCommand("workbench.view.extension.dbt_preview_results");
+        const queryLimit = this.getQueryLimit(query);
         this.transmitLoading();
-        let result = await runQuery(query, this.getQueryLimit(query));
+        let result = await runQuery(query, queryLimit);
         if (isError(result)) {
             if (result.error.code !== OsmosisErrorCode.FailedToReachServer) {
                 // Query hit live server but we have a legitimate error, return it
@@ -235,7 +236,13 @@ export class QueryResultPanel implements WebviewViewProvider {
                 return result.error.message;
             }
             // Assume from here server is not running
-            const command = this.commandFactory.createRunQueryCommand(query, projectRootUri, profilesDir, target);
+            const command = this.commandFactory.createRunQueryCommand(
+                query,
+                projectRootUri,
+                profilesDir,
+                target,
+                queryLimit
+            );
             const process = await this.dbtClient.executeCommand(command);
             try {
                 const response = await process.complete();
