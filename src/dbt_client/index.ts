@@ -24,6 +24,8 @@ export class DBTClient implements Disposable {
   public readonly onDBTInstallationVerification = this._onDBTInstallationVerificationEvent.event;
   private static readonly INSTALLED_VERSION =
     /installed.*:\s*(\d{1,2}\.\d{1,2}\.\d{1,2})/g;
+  private static readonly PIP_INSTALLED_VERSION =
+    /version: (\d{1,2}\.\d{1,2}\.\d{1,2})/gi;
   private static readonly LATEST_VERSION =
     /latest.*:\s*(\d{1,2}\.\d{1,2}\.\d{1,2})/g;
   private static readonly IS_INSTALLED = /installed/g;
@@ -121,17 +123,21 @@ export class DBTClient implements Disposable {
     const timeoutCmd = new Promise((resolve, _) => {
       setTimeout(resolve, 10000, "Could not connect");
     });
+    const stripAnsi = require("strip-ansi");
     try {
-      await Promise.race([checkDBTVersionProcess.complete(), timeoutCmd]);
+      const results = await Promise.race([checkDBTVersionProcess.complete(), timeoutCmd]);
+      try {
+        this.checkIfDBTIsUpToDate(stripAnsi(results));        
+      } catch (error) {
+        this.raiseDBTVersionCouldNotBeDeterminedEvent();        
+      }
       checkDBTVersionProcess.dispose();
     } catch (err) {
       if (typeof (err) === 'string' && err.match(DBTClient.IS_INSTALLED)) {
-        const stripAnsi = require("strip-ansi");
         this.checkIfDBTIsUpToDate(stripAnsi(err.replace("Process returned an error:", "")));
         return;
       }
     }
-    this.raiseDBTVersionCouldNotBeDeterminedEvent();
   }
 
   async installDbtOsmosis() {
@@ -273,25 +279,44 @@ export class DBTClient implements Disposable {
   }
 
   private checkIfDBTIsUpToDate(message: string): void {
-    const installedVersionMatch = DBTClient.INSTALLED_VERSION.exec(message);
+    const versionCheck: string = workspace
+      .getConfiguration("dbt")
+      .get<string>("versionCheck", "both");
+    const installedVersionMatch = versionCheck === "neither" ?
+      DBTClient.PIP_INSTALLED_VERSION.exec(message) : DBTClient.INSTALLED_VERSION.exec(message);
     if (installedVersionMatch === null || installedVersionMatch.length !== 2) {
-      throw Error(
-        `The Regex INSTALLED_VERSION ${DBTClient.INSTALLED_VERSION} is not working ...`
-      );
+      if (versionCheck === "neither") {
+        throw Error(
+          `The Regex PIP_INSTALLED_VERSION ${DBTClient.PIP_INSTALLED_VERSION} is not working ...`
+        );
+      } else {
+        throw Error(
+          `The Regex INSTALLED_VERSION ${DBTClient.INSTALLED_VERSION} is not working ...`
+        );
+      }
     }
     const installedVersion = installedVersionMatch[1];
     if (installedVersion === 'unknown') {
       this.raiseDBTVersionCouldNotBeDeterminedEvent();
       return;
     }
-    const latestVersionMatch = DBTClient.LATEST_VERSION.exec(message);
-    if (latestVersionMatch === null || latestVersionMatch.length !== 2) {
-      throw Error(
-        `The Regex IS_LATEST_VERSION ${DBTClient.LATEST_VERSION} is not working ...`
-      );
+    let latestVersion = undefined;
+    if (versionCheck !== "neither") {
+      const latestVersionMatch = DBTClient.LATEST_VERSION.exec(message);
+      if (latestVersionMatch === null || latestVersionMatch.length !== 2) {
+        throw Error(
+          `The Regex IS_LATEST_VERSION ${DBTClient.LATEST_VERSION} is not working ...`
+        );
+      }
+      latestVersion = latestVersionMatch !== null ? latestVersionMatch[1] : undefined;
     }
-    const latestVersion = latestVersionMatch !== null ? latestVersionMatch[1] : undefined;
-    this.raiseDBTVersionEvent(true, this.dbtOsmosisInstalled!, installedVersion, latestVersion, message);
+    this.raiseDBTVersionEvent(
+      true,
+      this.dbtOsmosisInstalled!,
+      installedVersion,
+      latestVersion,
+      message
+    );
   }
 
   private async handlePythonExtension(): Promise<void> {

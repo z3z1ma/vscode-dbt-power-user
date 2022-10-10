@@ -41,6 +41,19 @@ export class DBTCommandFactory {
   }
 
   createVerifyDbtInstalledCommand(): DBTCommand {
+    const versionCheck: string = workspace
+      .getConfiguration("dbt")
+      .get<string>("versionCheck", "both");
+    if (versionCheck === 'neither') {
+      return {
+        statusMessage: "Detecting dbt installation...",
+        processExecutionParams: {
+          cwd: this.getFirstWorkspacePath(),
+          args: ["-m", 'pip', 'show', 'dbt-core'],
+        },
+      };
+    }
+
     return {
       statusMessage: "Detecting dbt installation...",
       processExecutionParams: {
@@ -51,6 +64,19 @@ export class DBTCommandFactory {
   }
 
   createVerifyDbtOsmosisInstalledCommand(): DBTCommand {
+    const versionCheck: string = workspace
+      .getConfiguration("dbt")
+      .get<string>("versionCheck", "both");
+    if (versionCheck === 'neither') {
+      return {
+        statusMessage: "Detecting dbt osmosis installation...",
+        processExecutionParams: {
+          cwd: this.getFirstWorkspacePath(),
+          args: ["-m", 'pip', 'show', 'dbt-osmosis'],
+        },
+      };
+    }
+    
     return {
       statusMessage: "Detecting dbt osmosis installation...",
       processExecutionParams: {
@@ -180,6 +206,19 @@ except Exception as exc:
   }
 
   createVersionCommand(): DBTCommand {
+    const versionCheck: string = workspace
+      .getConfiguration("dbt")
+      .get<string>("versionCheck", "both");
+    if (versionCheck === 'neither') {
+      return {
+        statusMessage: "Detecting dbt version...",
+        processExecutionParams: {
+          cwd: this.getFirstWorkspacePath(),
+          args: ["-m", 'pip', 'show', 'dbt-core'],
+        },
+      };
+    }
+
     return {
       statusMessage: "Detecting dbt version...",
       processExecutionParams: {

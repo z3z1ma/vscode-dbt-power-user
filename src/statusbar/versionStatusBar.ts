@@ -64,14 +64,14 @@ export class VersionStatusBar implements Disposable {
         return;
       }
       if (event.dbtInstallationFound.installedVersion !== undefined) {
-          this.showTextInStatusBar(
-            `$(check) dbt ${event.dbtInstallationFound.installedVersion}`
-          );
-        } else {
-          this.showTextInStatusBar(
-            `$(check) dbt`
-          );
-        }
+        this.showTextInStatusBar(
+          `$(check) dbt ${event.dbtInstallationFound.installedVersion}`
+        );
+      } else {
+        this.showTextInStatusBar(
+          `$(check) dbt`
+        );
+      }
     }
   }
 
