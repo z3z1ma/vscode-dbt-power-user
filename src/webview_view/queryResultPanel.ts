@@ -217,6 +217,16 @@ export class QueryResultPanel implements WebviewViewProvider {
      * on an explicitly set limit in ther users query or via settings */
     private getQueryLimit(query: string): number {
         const queryLimit = workspace.getConfiguration("dbt.queryPreview").get<number>("queryLimit", 200);
+        // Remove the /* comments */
+        while (/(\/\*(?:(?!\/\*).)*?\*\/)/gms.test(query)) {
+            query = query.replace(/(\/\*(?:(?!\/\*).)*?\*\/)/gms, "");
+        }
+        // Remove the {# comments #}
+        while (/({#(?:(?!{#).)*?#})/gms.test(query)) {
+            query = query.replace(/({#(?:(?!{#).)*?#})/gms, "");
+        }
+        // Remove the -- comments
+        query = query.replace(/(--.*)/gm, "");
         const result = query.match(/limit (\d+)[^\w]*$/i) ?? [];
         const setLimit = result.length > 1 ? Number(result[1]) : queryLimit;
         return isNaN(setLimit) ? queryLimit : setLimit;
