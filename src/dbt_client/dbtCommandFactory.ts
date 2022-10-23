@@ -1,5 +1,3 @@
-import { join } from "path";
-import * as os from "os";
 import { Uri, workspace } from "vscode";
 import { provideSingleton } from "../utils";
 
@@ -76,7 +74,7 @@ export class DBTCommandFactory {
         },
       };
     }
-    
+
     return {
       statusMessage: "Detecting dbt osmosis installation...",
       processExecutionParams: {
@@ -92,116 +90,52 @@ export class DBTCommandFactory {
       statusMessage: "Installing dbt-osmosis...",
       processExecutionParams: {
         cwd: this.getFirstWorkspacePath(),
-        args: ["-m", "pip", "install", "--upgrade", "dbt-osmosis==0.7.16"]
+        args: ["-m", "pip", "install", "--upgrade", "dbt-osmosis==0.9.6"]
       },
       focus: true,
     };
   }
 
-  createRunQueryCommand(sql: string, projectRoot: Uri, profilesDir: Uri, target: string, limit: number): DBTCommand {
+  createRunQueryCommand(sql: string, projectRoot: Uri, profilesDir: Uri, target: string, limit?: number): DBTCommand {
+    const parsed_limit = limit ?? workspace
+      .getConfiguration("dbt.queryPreview")
+      .get<number>("queryLimit", 200);
     const queryTemplate = workspace
       .getConfiguration("dbt.queryPreview")
       .get<string>("queryTemplate", "select * from ({query}) as osmosis_query limit {limit}");
-
-    const queryRegex = queryTemplate
-      .replace(/\(/g, "\\(")
-      .replace(/\)/g, "\\)")
-      .replace(/\*/g, "\\*")
-      .replace("{query}", "([\\w\\W]+)")
-      .replace("{limit}", limit.toString());
-
-    const code = `\
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
-
-def default(obj):
-    if isinstance(obj, decimal.Decimal):
-        return float(obj)
-    raise TypeError
-
-def json_dumps(body):
-    return orjson.dumps(body, default=default).decode("utf-8")
-
-try:
-    import decimal
-    import json
-    import re
-    import sys
-    import traceback
-
-    import orjson
-    from dbt_osmosis.core.osmosis import DbtProject
-
-    runner = DbtProject(
-        profiles_dir=r"${profilesDir.fsPath}",
-        project_dir=r"${projectRoot.fsPath.replace(/"/g, '\\"')}",
-        target=r"${target.replace(/"/g, '\\"')}",
-    )
-    limit = ${limit}
-    query = """${sql.replace(/"/g, '\\"')}"""
-    query_with_limit = f"${queryTemplate}"
-    result = runner.execute_sql(query_with_limit)
-    print(json_dumps({
-        "rows": [list(row) for row in result.table.rows],
-        "column_names": result.table.column_names,
-        "compiled_sql": re.search(r"${queryRegex}", result.compiled_sql).groups()[0],
-        "raw_sql": query
-    }))
-    sys.exit(0)
-except Exception as exc:
-    eprint(json_dumps({"message": str(exc), "data": traceback.format_exc()}))
-    sys.exit(-1)`;
-
+    const query = queryTemplate.replace("{query}", sql).replace("{limit}", String(parsed_limit));
     return {
+      commandAsString: "python -m dbt_osmosis sql run",
       statusMessage: "Running query...",
       processExecutionParams: {
         cwd: projectRoot.fsPath,
-        args: ["-c", code],
+        args: ["-m", "dbt_osmosis", "sql", "run", query, "--project-dir", projectRoot.fsPath, "--profiles-dir", profilesDir.fsPath]
       },
+      focus: false,
     };
   }
 
-  createQueryPreviewCommand(sql: string, projectRoot: Uri, profilesDir: Uri, target: string): DBTCommand {
-    const code = `\
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
-
-def default(obj):
-    if isinstance(obj, decimal.Decimal):
-        return float(obj)
-    raise TypeError
-
-def json_dumps(body):
-    return orjson.dumps(body, default=default).decode("utf-8")
-
-try:
-    import decimal
-    import json
-    import re
-    import sys
-    import traceback
-
-    import orjson
-    from dbt_osmosis.core.osmosis import DbtProject
-    runner = DbtProject(
-        profiles_dir=r"${profilesDir.fsPath}",
-        project_dir=r"${projectRoot.fsPath.replace(/"/g, '\\"')}",
-        target=r"${target.replace(/"/g, '\\"')}",
-    )
-    result = runner.compile_sql("""${sql.replace(/"/g, '\\"')}""")
-    print(json_dumps({
-        "compiled_sql": result,
-    }))
-    sys.exit(0)
-except Exception as exc:
-    eprint(json_dumps({"message": str(exc), "data": traceback.format_exc()}))
-    sys.exit(-1)`;
+  createQueryPreviewCommand(sql: string, projectRoot: Uri, profilesDir: Uri, target?: string): DBTCommand {
     return {
-      statusMessage: "Running query...",
+      commandAsString: "python -m dbt_osmosis sql compile",
+      statusMessage: "Compiling query...",
       processExecutionParams: {
         cwd: projectRoot.fsPath,
-        args: ["-c", code],
+        args: ["-m", "dbt_osmosis", "sql", "compile", sql, "--project-dir", projectRoot.fsPath, "--profiles-dir", profilesDir.fsPath]
       },
+      focus: false,
+    };
+  }
+
+  createStartServerCommand(): DBTCommand {
+    return {
+      commandAsString: "python -m dbt_osmosis server serve",
+      statusMessage: "Running server...",
+      processExecutionParams: {
+        cwd: this.getFirstWorkspacePath(),
+        args: ["-m", "dbt_osmosis", "server", "serve"]
+      },
+      focus: true,
     };
   }
 
@@ -218,10 +152,10 @@ except Exception as exc:
         },
       };
     }
-
     return {
       statusMessage: "Detecting dbt version...",
       processExecutionParams: {
+        cwd: this.getFirstWorkspacePath(),
         args: ["-c", this.dbtCommand("'--version'")],
       },
     };

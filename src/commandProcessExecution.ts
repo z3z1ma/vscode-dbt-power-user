@@ -31,7 +31,7 @@ export class CommandProcessExecution implements Disposable {
     token?: CancellationToken,
     envVars?: EnvVars
   ) {
-    this.commandProcess = spawn(command, args, { cwd: cwd, env: envVars });
+    this.commandProcess = spawn(command, args, { cwd: cwd, env: envVars, detached: true });
     if (token !== undefined) {
       this.disposables.push(
         token.onCancellationRequested(() => {

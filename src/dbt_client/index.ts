@@ -5,6 +5,8 @@ import {
   window,
   Uri,
   workspace,
+  ProgressLocation,
+  CancellationTokenSource,
 } from "vscode";
 import { DBTCommandQueue } from "./dbtCommandQueue";
 import { DBTCommand, DBTCommandFactory } from "./dbtCommandFactory";
@@ -14,8 +16,9 @@ import {
 } from "../commandProcessExecution";
 import { DBTInstallationVerificationEvent } from "./dbtVersionEvent";
 import { PythonEnvironment } from "../manifest/pythonEnvironment";
-import { provideSingleton } from "../utils";
+import { debounce, provideSingleton } from "../utils";
 import { DBTTerminal } from "./dbtTerminal";
+import { isError, reparseProject } from "../osmosis_client";
 
 @provideSingleton(DBTClient)
 export class DBTClient implements Disposable {
@@ -32,9 +35,11 @@ export class DBTClient implements Disposable {
   private pythonPath?: string;
   private dbtInstalled?: boolean;
   private dbtOsmosisInstalled?: boolean;
+  private dbtOsmosisServerController?: CancellationTokenSource;
   private disposables: Disposable[] = [
     this._onDBTInstallationVerificationEvent,
   ];
+  private reparseProject: (...args: any[]) => void;
 
   constructor(
     private pythonEnvironment: PythonEnvironment,
@@ -42,9 +47,28 @@ export class DBTClient implements Disposable {
     private queue: DBTCommandQueue,
     private commandProcessExecutionFactory: CommandProcessExecutionFactory,
     private terminal: DBTTerminal
-  ) { }
+  ) {
+    this.reparseProject = debounce((projectUri: Uri, profilesDir: Uri, listModelsDisabled: boolean) => {
+      window.withProgress(
+        { location: ProgressLocation.Notification, title: "Syncing dbt project with server..." },
+        async () => {
+          let resp = await reparseProject(projectUri.fsPath);
+          if (listModelsDisabled) {
+            return;
+          } else if (isError(resp)) {
+            this.addCommandToQueue(
+              this.dbtCommandFactory.createListCommand(projectUri, profilesDir)
+            );
+          }
+        }
+      );
+    }, 5000);
+  }
 
   dispose() {
+    if (this.dbtOsmosisServerController) {
+      this.dbtOsmosisServerController.cancel();
+    }
     while (this.disposables.length) {
       const x = this.disposables.pop();
       if (x) {
@@ -71,27 +95,35 @@ export class DBTClient implements Disposable {
     const listModelsDisabled = workspace
       .getConfiguration("dbt")
       .get<boolean>("listModelsDisabled", false);
-    if (listModelsDisabled) {
-      return;
-    }
-    this.addCommandToQueue(
-      this.dbtCommandFactory.createListCommand(projectUri, profilesDir)
-    );
+    this.reparseProject(projectUri, profilesDir, listModelsDisabled);
   }
 
   async checkAllInstalled(): Promise<void> {
     this._onDBTInstallationVerificationEvent.fire({
       inProgress: true
     });
+
+    // Kickstart the server, its okay if its running already 
+    // via an external process, its also okay if this kickstart 
+    // fails due to the package not being installed, we reload window after prompt
+    try {
+      let serverController = new CancellationTokenSource();
+      this.executeCommand(
+        this.dbtCommandFactory.createStartServerCommand(),
+        serverController.token
+      );
+      this.dbtOsmosisServerController = serverController;
+    } catch (e) { console.log(e); }
+
     this.dbtInstalled = undefined;
     this.dbtOsmosisInstalled = undefined;
 
-    // check for dbt installed
+    // Check if dbt is installed
     const checkDBTInstalledProcess = await this.executeCommand(
       this.dbtCommandFactory.createVerifyDbtInstalledCommand()
     );
 
-    // check for dbt osmosis installed
+    // Check if dbt osmosis is installed
     const checkDBTOsmosisInstalledProcess = await this.executeCommand(
       this.dbtCommandFactory.createVerifyDbtOsmosisInstalledCommand()
     );
@@ -127,9 +159,9 @@ export class DBTClient implements Disposable {
     try {
       const results = await Promise.race([checkDBTVersionProcess.complete(), timeoutCmd]);
       try {
-        this.checkIfDBTIsUpToDate(stripAnsi(results));        
+        this.checkIfDBTIsUpToDate(stripAnsi(results));
       } catch (error) {
-        this.raiseDBTVersionCouldNotBeDeterminedEvent();        
+        this.raiseDBTVersionCouldNotBeDeterminedEvent();
       }
       checkDBTVersionProcess.dispose();
     } catch (err) {

@@ -58,7 +58,10 @@ export class DBTWorkspaceFolder implements Disposable {
   }
 
   dispose() {
-    this.dbtProjects.forEach((project) => project.dispose());
+    this.dbtProjects.forEach((project) => {
+      project.unregisterProjectOnOsmosisServer();
+      project.dispose();
+    });
     while (this.disposables.length) {
       const x = this.disposables.pop();
       if (x) {
@@ -72,18 +75,20 @@ export class DBTWorkspaceFolder implements Disposable {
       uri,
       this._onManifestChanged
     );
-    dbtProject.rebuildManifest();
-    dbtProject.tryRefresh();
+    await dbtProject.registerProjectOnOsmosisServer();
+    await dbtProject.rebuildManifest();
+    await dbtProject.tryRefresh();
     this.dbtProjects.push(dbtProject);
   }
 
-  private unregisterDBTProject(uri: Uri) {
+  private async unregisterDBTProject(uri: Uri) {
     const projectToDelete = this.dbtProjects.find(
       (dbtProject) => dbtProject.projectRoot.fsPath === uri.fsPath
     );
     if (projectToDelete === undefined) {
       return;
     }
+    await projectToDelete.unregisterProjectOnOsmosisServer();
     projectToDelete.dispose();
     this.dbtProjects.splice(this.dbtProjects.indexOf(projectToDelete));
   }

@@ -28,10 +28,9 @@ import {
 } from "../dbt_client/dbtCommandFactory";
 import { ManifestCacheChangedEvent } from "./event/manifestCacheChangedEvent";
 import { DBTTerminal } from "../dbt_client/dbtTerminal";
-import { ProfilesMetaData } from "../domain";
 import { join } from "path";
 import { QueryResultPanel } from "../webview_view/queryResultPanel";
-import { compileQuery, isError, OsmosisErrorCode } from "../osmosis_client";
+import { compileQuery, healthCheck, isError, OsmosisErrorCode, registerProject, unregisterProject } from "../osmosis_client";
 
 export class DBTProject implements Disposable {
   static DBT_PROJECT_FILE = "dbt_project.yml";
@@ -52,7 +51,6 @@ export class DBTProject implements Disposable {
   private projectName?: string;
   private targetPath?: string;
   private sourcePaths?: string[];
-  private profilesMetaData?: ProfilesMetaData;
 
   private _onProjectConfigChanged = new EventEmitter<ProjectConfigChangedEvent>();
   public onProjectConfigChanged = this._onProjectConfigChanged.event;
@@ -176,7 +174,7 @@ export class DBTProject implements Disposable {
   }
 
   async compileQuery(query: string): Promise<string> {
-    const data = await compileQuery(query);
+    const data = await compileQuery(this.projectRoot.fsPath, query);
     if (isError(data)) {
       if (data.error.code !== OsmosisErrorCode.FailedToReachServer) {
         // Query hit server but we have a legitimate error, return it
@@ -186,7 +184,6 @@ export class DBTProject implements Disposable {
         query,
         this.projectRoot,
         this.dbtProfilesDir,
-        this.profilesMetaData!.defaultTarget
       );
       const process = await this.dbtProjectContainer.executeCommand(command);
       try {
@@ -219,9 +216,30 @@ export class DBTProject implements Disposable {
       query,
       this.projectRoot,
       this.dbtProfilesDir,
-      this.profilesMetaData!.defaultTarget,
       title
     );
+  }
+
+  async registerProjectOnOsmosisServer() {
+    const tick = () => new Promise(resolve => setTimeout(resolve, 1000));
+    let t = 10;
+    while (!await healthCheck() && t > 0) {
+      await tick();
+      t -= 1;
+    }
+    let resp = await registerProject(this.projectRoot.fsPath, this.dbtProfilesDir.fsPath);
+    if (isError(resp)) {
+      console.log(resp);
+    } else {
+      window.showInformationMessage("Osmosis Server project registration complete!");
+    }
+  }
+
+  async unregisterProjectOnOsmosisServer() {
+    let resp = await unregisterProject(this.projectRoot.fsPath);
+    if (isError(resp)) {
+      console.log(resp);
+    }
   }
 
   dispose() {
@@ -286,38 +304,13 @@ export class DBTProject implements Disposable {
     this.projectName = projectConfig.name;
     this.targetPath = this.findTargetPath(projectConfig);
     this.sourcePaths = this.findSourcePaths(projectConfig);
-    const profileName = projectConfig["profile"] !== undefined ? projectConfig.profile : this.projectName!;
-    this.profilesMetaData = this.readDbtProfile(profileName);
 
     const event = new ProjectConfigChangedEvent(
       this.projectRoot,
       this.projectName as string,
-      this.profilesMetaData,
       this.targetPath,
       this.sourcePaths
     );
     this._onProjectConfigChanged.fire(event);
-  }
-
-  private readDbtProfile(projectName: string): ProfilesMetaData {
-    let profiles: any;
-    try {
-      profiles = parse(readFileSync(join(this.dbtProfilesDir.fsPath, "profiles.yml"), "utf8"), { uniqueKeys: false });
-    } catch (error) {
-      window.showErrorMessage(`Could not read profiles.yml from ${this.dbtProfilesDir}: ${error}`);
-      throw error;
-    }
-
-    if (profiles[projectName] === undefined
-      || profiles[projectName]["outputs"] === undefined
-      || typeof (profiles[projectName]["outputs"]) !== "object") {
-      window.showErrorMessage(`Could not find dbt profile for '${projectName}' in ${this.dbtProfilesDir}. Did you create a dbt profile?`);
-      throw new Error("No dbt profile has been created!");
-    }
-
-    return {
-      targets: Object.keys(profiles[projectName].outputs),
-      defaultTarget: profiles[projectName].target
-    };
   }
 }

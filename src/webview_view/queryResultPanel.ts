@@ -238,7 +238,7 @@ export class QueryResultPanel implements WebviewViewProvider {
         commands.executeCommand("workbench.view.extension.dbt_preview_results");
         const queryLimit = this.getQueryLimit(query);
         this.transmitLoading();
-        let result = await runQuery(query, queryLimit);
+        let result = await runQuery(projectRootUri.fsPath, query, queryLimit);
         if (isError(result)) {
             if (result.error.code !== OsmosisErrorCode.FailedToReachServer) {
                 // Query hit live server but we have a legitimate error, return it

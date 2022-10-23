@@ -17,7 +17,7 @@ import { DBTProjectContainer } from "../manifest/dbtProjectContainer";
 
 @provideSingleton(MacroAutocompletionProvider) // TODO autocomplete doesn't work when mistype, delete and retype
 export class MacroAutocompletionProvider
-implements CompletionItemProvider, Disposable {
+  implements CompletionItemProvider, Disposable {
   private macrosAutocompleteMap: Map<string, CompletionItem[]> = new Map();
   private disposables: Disposable[] = [];
 
