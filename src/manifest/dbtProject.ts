@@ -231,7 +231,7 @@ export class DBTProject implements Disposable {
     if (isError(resp)) {
       console.log(resp);
     } else {
-      window.showInformationMessage("Osmosis Server project registration complete!");
+      window.showInformationMessage(`Osmosis Server project registration complete: ${this.projectRoot.fsPath}`);
     }
   }
 
