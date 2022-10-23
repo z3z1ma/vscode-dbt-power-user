@@ -106,9 +106,7 @@ export async function runQuery(dbtProjectPath: string, query: string, limit: num
         `run?limit=${limit}`,
         {
             method: "POST",
-            headers: {
-                "content-type": "text/plain",
-            },
+            headers: { "content-type": "text/plain" },
             body: query,
         }
     );
@@ -121,9 +119,7 @@ export async function compileQuery(dbtProjectPath: string, query: string) {
         "compile",
         {
             method: "POST",
-            headers: {
-                "content-type": "text/plain",
-            },
+            headers: { "content-type": "text/plain" },
             body: query,
         }
     );
@@ -150,7 +146,7 @@ export async function reparseProject(
 export async function registerProject(dbtProjectPath: string, dbtProfilePath: string) {
     return await osmosisFetch<OsmosisRegisterResult | OsmosisErrorContainer>(
         dbtProjectPath,
-        `register?project_dir=${encodeURIComponent(dbtProjectPath)}&profiles_dir=${encodeURIComponent(dbtProfilePath)}`,
+        `register?project_dir=${encodeURIComponent(dbtProjectPath)}&profiles_dir=${encodeURIComponent(dbtProfilePath)}&force=true`,
         { method: "POST" }
     );
 }
@@ -170,9 +166,8 @@ export async function healthCheck(): Promise<boolean> {
     const timeoutHandler = setTimeout(() => {
         abortController.abort();
     }, 1000);
-    let response;
     try {
-        response = await fetch(
+        await fetch(
             `http://${getHost()}:${getPort()}/health`,
             {
                 method: "GET",
