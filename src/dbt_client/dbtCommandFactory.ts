@@ -90,7 +90,7 @@ export class DBTCommandFactory {
       statusMessage: "Installing dbt-osmosis...",
       processExecutionParams: {
         cwd: this.getFirstWorkspacePath(),
-        args: ["-m", "pip", "install", "--upgrade", "dbt-osmosis==0.9.6"]
+        args: ["-m", "pip", "install", "--upgrade", "dbt-osmosis==0.9.7"]
       },
       focus: true,
     };
