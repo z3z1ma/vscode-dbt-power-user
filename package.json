@@ -1,19 +1,19 @@
 {
-  "name": "vscode-dbt-power-user",
-  "displayName": "dbt Power User",
-  "description": "This extension makes vscode seamlessly work with dbt",
-  "icon": "media/images/dbt.png",
-  "publisher": "innoverio",
+  "name": "vscode-dbt-power-user-osmosis",
+  "displayName": "dbt Osmosis Power User",
+  "description": "This extension makes vscode seamlessly work with dbt. It is derived from dbt Power User but has tighter integration with dbt-osmosis.",
+  "icon": "media/images/dbt-wave.png",
+  "publisher": "z3z1ma",
   "license": "MIT",
-  "homepage": "https://github.com/innoverio/vscode-dbt-power-user",
+  "homepage": "https://github.com/z3z1ma/vscode-dbt-power-user",
   "repository": {
     "type": "git",
-    "url": "https://github.com/innoverio/vscode-dbt-power-user.git"
+    "url": "https://github.com/z3z1ma/vscode-dbt-power-user.git"
   },
   "bugs": {
-    "url": "https://github.com/innoverio/vscode-dbt-power-user/issues"
+    "url": "https://github.com/z3z1ma/vscode-dbt-power-user/issues"
   },
-  "version": "0.7.9",
+  "version": "0.8.0",
   "engines": {
     "vscode": "^1.52.0"
   },
@@ -48,7 +48,7 @@
             "items": {
               "type": "string"
             },
-            "default": [],
+            "default": [ ],
             "description": "Add additonal params to the dbt run model command."
           },
           "dbt.profilesDirOverride": {

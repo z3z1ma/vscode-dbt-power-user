@@ -38,7 +38,7 @@
 <body>
     <div id="app">
         <vscode-panels id="panel-manager" activeid="tab-3" aria-label="dbt Preview">
-            <vscode-panel-tab v-show="(hasData || hasError || isLoading)" id="tab-1">
+            <vscode-panel-tab v-show="(hasData || hasError || isLoading || firstQueryCompleted)" id="tab-1">
                 Preview
                 <vscode-badge appearance="secondary">{{ queryExecutionInfo }}</vscode-badge>
             </vscode-panel-tab>
@@ -51,11 +51,15 @@
                 {{ (hasData || hasError || isLoading) ? "Help" : "Welcome 🚀" }}
             </vscode-panel-tab>
 
-            <vscode-panel-view v-show="(hasData || hasError || isLoading)" id="view-1">
+            <vscode-panel-view v-show="(hasData || hasError || isLoading || firstQueryCompleted)" id="view-1">
                 <img v-if="isLoading" id="spinner" src="__ROOT__/assets/spinner.gif" /></img>
 
                 <div v-show="hasData">
                     <div id="query-results"></div>
+                </div>
+
+                <div v-if="firstQueryCompleted && !hasData">
+                    <p>No results! Check your query and try again.</p>
                 </div>
 
                 <div v-show="hasError">
@@ -81,7 +85,8 @@
                     <br />
                     <vscode-text-field v-model.number="limit" type="number">Query Limit</vscode-text-field>
                     <br /><br />
-                    <vscode-button @click="clearData" v-if="(hasData || hasError)">Clear Results</vscode-button>
+                    <vscode-button @click="clearData" v-if="(hasData || hasError || firstQueryCompleted)">Clear Results
+                    </vscode-button>
                 </div>
 
                 <div class="help-body">
@@ -90,7 +95,7 @@
                         Highlight part of a query to preview only selection</p>
                     <h2>Default Query Limit</h2>
                     <p>Query preview is limited to 500 rows by default, this can be configured in Settings -&gt; dbt
-                        Power User or via changing the input to the left which is synchronized with the VS Code
+                        Osmosis Power User or via changing the input to the left which is synchronized with the VS Code
                         setting</p>
                     <h2>Dispatched SQL</h2>
                     <p>This tab displays the compiled query sent to the database. You can copy to run directly in your

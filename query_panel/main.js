@@ -25,7 +25,8 @@ const app = createApp({
             limit: 500,
             queryStart: Date.now(),
             queryEnd: undefined,
-            timer: undefined
+            timer: undefined,
+            firstQueryCompleted: false
         };
     },
     methods: {
@@ -37,6 +38,7 @@ const app = createApp({
                 columns: data.columns,
                 layout: "fitDataFill",
             });
+            this.firstQueryCompleted = true;
         },
         updateError(data) {
             this.error = data.error;
@@ -59,6 +61,7 @@ const app = createApp({
             this.queryStart = Date.now();
             this.queryEnd = undefined;
             this.timer = undefined;
+            this.firstQueryCompleted = false;
         },
         focusPreviewPane() {
             document.querySelector("#panel-manager").activeid = "tab-1";
