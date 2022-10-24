@@ -20,7 +20,7 @@ import { DBTClient } from "../dbt_client";
 import { DBTCommandFactory } from "../dbt_client/dbtCommandFactory";
 import { DBTProjectContainer } from "../manifest/dbtProjectContainer";
 import { provideSingleton } from '../utils';
-import { runQuery, isError, OsmosisRunResult, OsmosisErrorCode } from "../osmosis_client";
+import { runQuery, isError, OsmosisRunResult, OsmosisErrorCode, OsmosisErrorContainer } from "../osmosis_client";
 
 interface JsonObj {
     [key: string]: string | number | undefined;
@@ -246,28 +246,23 @@ export class QueryResultPanel implements WebviewViewProvider {
                 return result.error.message;
             }
             // Assume from here server is not running
-            const command = this.commandFactory.createRunQueryCommand(
-                query,
-                projectRootUri,
-                profilesDir,
-                target,
-                queryLimit
-            );
+            const command = this.commandFactory.createRunQueryCommand(query, projectRootUri, profilesDir, target, queryLimit);
             const process = await this.dbtClient.executeCommand(command);
             try {
                 const response = await process.complete();
-                result = JSON.parse(response) as OsmosisRunResult;
-                await this.transmitDataWrapper(result, query);
-            } catch (error: any) {
-                const errorObj = JSON.parse(error);
-                if (errorObj.message.includes("No module named 'dbt_osmosis")) {
-                    commands.executeCommand("dbtPowerUser.installDbtOsmosis");
+                const output: OsmosisRunResult | OsmosisErrorContainer = JSON.parse(response);
+                if (isError(output)) {
+                    await this.transmitError(output.error, query, query);
+                } else {
+                    await this.transmitDataWrapper(output, query);
                 }
-                await this.transmitError(errorObj, query, query);
-                return errorObj.message;
+            } catch (error: any) {
+                // Unknown error, not JSON
+                window.showErrorMessage(error);
+                await this.transmitError({
+                    error: { code: -1, message: error, data: {} }
+                }, query, query);
             }
-        } else {
-            await this.transmitDataWrapper(result, query);
         }
     }
 }
