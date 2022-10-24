@@ -87,6 +87,11 @@
             ],
             "description": "This determines which messages will show when the dbt version is outdated."
           },
+          "dbt.server.inProcessFallback": {
+            "type": "boolean",
+            "default": false,
+            "description": "Determines whether the extension should try to execute dbt-osmosis compile and run commands in a subprocess if the server is not found. Note that the subprocess can be very slow for larger projects."
+          },
           "dbt.server.osmosisHost": {
             "type": "string",
             "default": "localhost"

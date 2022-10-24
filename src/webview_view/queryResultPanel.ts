@@ -244,8 +244,12 @@ export class QueryResultPanel implements WebviewViewProvider {
                 // Query hit live server but we have a legitimate error, return it
                 await this.transmitError(result.error, query, query);
                 return result.error.message;
+            } else if (workspace.getConfiguration("dbt.server").get<boolean>("inProcessFallback", false)) {
+                // Subprocess fallback is not enabled
+                await this.transmitError(result.error, query, query);
+                return result.error.message;
             }
-            // Assume from here server is not running
+            // Assume from here server is not running & subprocess fallback is enabled
             const command = this.commandFactory.createRunQueryCommand(query, projectRootUri, profilesDir, target, queryLimit);
             const process = await this.dbtClient.executeCommand(command);
             try {

@@ -30,7 +30,7 @@ import { ManifestCacheChangedEvent } from "./event/manifestCacheChangedEvent";
 import { DBTTerminal } from "../dbt_client/dbtTerminal";
 import { join } from "path";
 import { QueryResultPanel } from "../webview_view/queryResultPanel";
-import { compileQuery, healthCheck, isError, OsmosisErrorCode, registerProject, unregisterProject } from "../osmosis_client";
+import { compileQuery, healthCheck, isError, OsmosisCompileResult, OsmosisErrorCode, OsmosisErrorContainer, registerProject, unregisterProject } from "../osmosis_client";
 
 export class DBTProject implements Disposable {
   static DBT_PROJECT_FILE = "dbt_project.yml";
@@ -175,11 +175,17 @@ export class DBTProject implements Disposable {
 
   async compileQuery(query: string): Promise<string> {
     const data = await compileQuery(this.projectRoot.fsPath, query);
-    if (isError(data)) {
+    if (!isError(data)) {
+      return data.result;
+    } else {
       if (data.error.code !== OsmosisErrorCode.FailedToReachServer) {
         // Query hit server but we have a legitimate error, return it
         return data.error.message;
+      } else if (workspace.getConfiguration("dbt.server").get<boolean>("inProcessFallback", false)) {
+        // Subprocess fallback is not enabled
+        return data.error.message;
       }
+      // Assume from here server is not running & subprocess fallback is enabled
       const command = this.dbtCommandFactory.createQueryPreviewCommand(
         query,
         this.projectRoot,
@@ -188,18 +194,17 @@ export class DBTProject implements Disposable {
       const process = await this.dbtProjectContainer.executeCommand(command);
       try {
         const response = await process.complete();
-        const result: any = JSON.parse(response);
-        return result.compiled_sql;
-      } catch (error: any) {
-        const errorObj = JSON.parse(error);
-        if (errorObj.message.includes("No module named 'dbt-osmosis")) {
-          commands.executeCommand("dbtPowerUser.installDbtOsmosis");
+        const output: OsmosisCompileResult | OsmosisErrorContainer = JSON.parse(response);
+        if (isError(output)) {
+          return output.error.message;
+        } else {
+          return output.result;
         }
-        window.showErrorMessage(errorObj.message);
-        return errorObj.message + "\n\n" + "Detailed error information:\n" + JSON.stringify(errorObj, null, 2).replace(/\\n/g, "\n");
+      } catch (error: any) {
+        // Unknown error, not JSON
+        window.showErrorMessage(error);
+        return error;
       }
-    } else {
-      return data.result;
     }
   }
 
