@@ -133,7 +133,7 @@ export class DBTCommandFactory {
       statusMessage: "Running server...",
       processExecutionParams: {
         cwd: this.getFirstWorkspacePath(),
-        args: ["-m", "dbt_osmosis", "server", "serve"]
+        args: ["-m", "dbt_osmosis", "server", "serve", "--host", "0.0.0.0"]
       },
       focus: true,
     };

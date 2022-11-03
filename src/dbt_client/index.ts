@@ -108,10 +108,11 @@ export class DBTClient implements Disposable {
     // fails due to the package not being installed, we reload window after prompt
     try {
       let serverController = new CancellationTokenSource();
-      this.executeCommand(
+      let c = await this.executeCommand(
         this.dbtCommandFactory.createStartServerCommand(),
         serverController.token
       );
+      await c.completeWithTerminalOutput(this.terminal);
       this.dbtOsmosisServerController = serverController;
     } catch (e) { console.log(e); }
 
