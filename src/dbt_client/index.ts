@@ -112,7 +112,13 @@ export class DBTClient implements Disposable {
         this.dbtCommandFactory.createStartServerCommand(),
         serverController.token
       );
-      await c.completeWithTerminalOutput(this.terminal);
+      c.completeWithTerminalOutput(this.terminal).then(e => {
+        console.log("Server closed gracefully");
+        this.terminal.log("Server closed gracefully");
+      }).catch(e => {
+        console.log(e);
+        this.terminal.log(e);
+      });
       this.dbtOsmosisServerController = serverController;
     } catch (e) { console.log(e); }
 

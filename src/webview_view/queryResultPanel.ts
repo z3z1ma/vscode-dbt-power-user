@@ -267,6 +267,8 @@ export class QueryResultPanel implements WebviewViewProvider {
                     error: { code: -1, message: error, data: {} }
                 }, query, query);
             }
+        } else {
+            this.transmitDataWrapper(result, query);
         }
     }
 }
