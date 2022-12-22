@@ -368,6 +368,6 @@
     "node-abort-controller": "^3.0.1",
     "node-fetch": "^3.2.10",
     "reflect-metadata": "^0.1.13",
-    "yaml": "^2.0.0-10"
+    "yaml": "^2.2.0"
   }
 }
